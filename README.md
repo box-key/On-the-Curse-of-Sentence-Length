@@ -13,3 +13,10 @@ This is a research project on why Neural Machine Translation (NMT) models yield 
 
 # Repository Structure
 Pre-trained models in fairseq, custom models and translation datasets are stored in data-bin. Methods and NMT models including Bi-LSTM, Attention, and Transformer are stored in models library. Tutorial Archive stores codes with my comments on tutorial: https://github.com/bentrevett/pytorch-seq2seq. All bash files are written for windows environment.
+
+# Fairseq Models
+Please execute codes line by line in ".sh" files.
+Before run them, make sure you download the following pre-trained models on fairseq and place them in data-bin:
+- Convolutional trained on WMT14 English-French: https://dl.fbaipublicfiles.com/fairseq/models/wmt14.v2.en-fr.fconv-py.tar.bz2
+- Transformer trained on WMT14 English-French: https://dl.fbaipublicfiles.com/fairseq/models/wmt14.en-fr.joined-dict.transformer.tar.bz2
+
