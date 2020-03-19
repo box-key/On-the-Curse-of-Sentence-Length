@@ -1,5 +1,7 @@
 import time
 import numpy as np
+from torchtext.data.metrics import bleu_score
+import matplotlib.pyplot as plt
 
 def calc_time(start_time):
     total = time.time() - start_time
@@ -70,3 +72,51 @@ def splitDatabyNumberOfUnknowns(triples, tick, choice):
             data.update({num_unk_range:[triple]})
 
     return data
+
+def calcMetrics(data, spliter, edit_dist, tick, choice):
+    data = spliter(data, tick=tick, choice=choice)
+    NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N = [],[],[],[],[],[],[]
+    
+    for key, value in sorted(data.items(), key=lambda x: x[0]):
+        KEYS.append(str(key*tick))
+        NUM_DATA.append(len(value))
+
+        arr = np.array(value)
+        bleu = bleu_score(arr[:,2], arr[:,1])
+        if isinstance(bleu, tuple):
+            BLEU_bp.append(bleu[0])
+            BLEU_pre.append(bleu[1])
+            BLEU.append(bleu[2])
+        else:
+            BLEU_bp.append(0)
+            BLEU_pre.append(0)
+            BLEU.append(0)
+        EDIT.append(edit_dist(arr[:,2], arr[:,1], normalize=False))
+        EDIT_N.append(edit_dist(arr[:,2], arr[:,1], normalize=True))
+    
+    return NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N
+
+def plotResults(NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N):
+    plt.plot(KEYS, NUM_DATA)
+    plt.title('Number of Sentences')
+    plt.show()
+
+    plt.plot(KEYS, BLEU_pre)
+    plt.title('BLEU Precision')
+    plt.show()
+
+    plt.plot(KEYS, BLEU_bp)
+    plt.title('BLEU Brevity Penalty')
+    plt.show()
+
+    plt.plot(KEYS, BLEU)
+    plt.title('BLEU')
+    plt.show()
+
+    plt.plot(KEYS, EDIT)
+    plt.title('Edit Distance')
+    plt.show()
+
+    plt.plot(KEYS, EDIT_N)
+    plt.title('Normalize Edit Distance')
+    plt.show()

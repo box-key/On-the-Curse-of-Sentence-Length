@@ -35,10 +35,10 @@ def exportData(src_path, trg_path, exts, proportions, export_path, reduce_rate=1
                               train=proportions[0],
                               val=proportions[1],
                               test=proportions[2])
-    
+
     if not os.path.exists(export_path):
         os.mkdir(export_path)
-    
+
     # Export training sets
     with io.open(os.path.join(export_path,'train'+exts[0]), mode='w', encoding='utf-8') as f_src, \
          io.open(os.path.join(export_path,'train'+exts[1]), mode='w', encoding='utf-8') as f_trg:
@@ -80,4 +80,3 @@ class MyTranslationDataset(data.Dataset):
 
     def __init__(self, examples, fields, **kwargs):
         super(MyTranslationDataset, self).__init__(examples, fields, **kwargs)
-        
