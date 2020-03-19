@@ -25,7 +25,7 @@ def loadFairseqOutput(out_path):
 
 def splitDatabySentenceLength(triples, tick, choice):
     
-    assert (choice=='trg' or choice=='ref'), 'choice should be trg or ref'
+    assert (choice=='src' or choice=='ref'), 'choice should be src or ref'
 
     max_len = 0
     data = {}
@@ -45,7 +45,7 @@ def splitDatabySentenceLength(triples, tick, choice):
 
 def splitDatabyNumberOfUnknowns(triples, tick, choice):
 
-    assert (choice=='trg' or choice=='ref'), 'choice should be trg or ref'
+    assert (choice=='src' or choice=='ref'), 'choice should be src or ref'
 
     data = {}
     # go through all the src-trg pairs
