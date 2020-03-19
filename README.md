@@ -1,6 +1,6 @@
 # Description
 
-This is a research project on why Neural Machine Translation (NMT) models yield low performance when it translates long sentences. We study various factors inlcuding the effect of unk tokens in source and reference, the number of heads in transformer, etc. We employ (Normalized) Edit/Levenstein Distance and Brevity Penalty and Precision in BLEU score. We test various models including Bi-LSTM, Attention, Convolution, and Transformer.
+This is a research project on why Neural Machine Translation (NMT) models yield low performance when it translates long sentences. We study various factors inlcuding the effect of unk tokens in source and reference, the number of heads in transformer, etc. We employ (Normalized) Edit/Levenstein Distance and Brevity Penalty and Precision in BLEU score. We test various models including Bi-LSTM, Attention, Convolution, and Transformer on Europarl-v7 parallel corpus for English-French (https://www.statmt.org/europarl/).
 
 # Libraries
 - Pytorch (1.4.0)
