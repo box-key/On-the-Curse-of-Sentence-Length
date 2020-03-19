@@ -11,4 +11,4 @@ cd %MODEL_DIR%
 # generate hypothesis for external data
 # fairseq-generate data-bin/europarl-v7.fr-en.reduced --source-lang en --target-lang fr --path data-bin/wmt14.en-fr.fconv-py/model.pt --gen-subset test --beam=3 --batch-size=32 > out.txt
 set PYTHONIOENCODING=utf-8
-fairseq-generate data-bin/europarl-v7.fr-en.reduced_transformer --path data-bin/wmt14.en-fr.joined-dict.transformer/model.pt --beam 3 --batch-size 32 --source-lang en --target-lang fr --tokenizer moses --bpe subword_nmt --bpe-codes data-bin/wmt14.en-fr.joined-dict.transformer/bpecodes > data-bin/out_transformer.txt
+fairseq-generate data-bin/europarl-v7.fr-en.reduced_transformer --path data-bin/wmt14.en-fr.joined-dict.transformer/model.pt --beam 3 --batch-size 32 --source-lang en --target-lang fr --tokenizer moses --bpe subword_nmt --bpe-codes data-bin/wmt14.en-fr.joined-dict.transformer/bpecodes > data-bin/out_reduced_transformer.txt
