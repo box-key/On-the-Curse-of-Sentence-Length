@@ -4,6 +4,7 @@ This is a research project on why Neural Machine Translation (NMT) models yield 
 
 # Libraries
 - Pytorch (1.4.0)
+- Cython (0.29.6)
 - torchtext (0.5.0)
 - python-Levenshtein (0.12.0)
 - spacy (2.2.3)
