@@ -2,6 +2,8 @@ import time
 import numpy as np
 from torchtext.data.metrics import bleu_score
 import matplotlib.pyplot as plt
+import Levenshtein as lev
+from utils.edit_distance as ed
 
 def calc_time(start_time):
     total = time.time() - start_time
@@ -26,10 +28,9 @@ def loadFairseqOutput(out_path):
     return np.array(matrix)
 
 def splitDatabySentenceLength(triples, tick, choice):
-    
+
     assert (choice=='src' or choice=='ref'), 'choice should be src or ref'
 
-    max_len = 0
     data = {}
     for triple in triples:
         # store ref length or target length, depending on choice
@@ -73,10 +74,106 @@ def splitDatabyNumberOfUnknowns(triples, tick, choice):
 
     return data
 
+def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
+    """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
+    translation corpus at token-level.
+
+    Arguments:
+        candidate_corpus: an iterable of candidate translations. Each translation is an
+            iterable of tokens
+        reference_corpus: an iterable of iterables of reference translations. Each
+            translation is an iterable of tokens
+        normalize: if it's true, this function returns normalized Levenshtein score or nomalized edit distance
+
+    Examples:
+        >>> from torchtext.data.metrics import bleu_score
+        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
+        >>> references_corpus = ['I', 'ate', 'it']
+        >>> edit_distance(candidate, reference, normalize=False)
+            2
+        >>> edit_distance(candidate, reference, normalize=True)
+            0.666
+    """
+
+    assert len(candidate_corpus) == len(reference_corpus),\
+        'The length of candidate and reference corpus should be the same'
+
+    total_dist = 0.0
+    dists = []
+    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
+        # Form them as sentences
+        dist = ed.edit_distance(np.array(candidate), np.array(ref))
+        if normalize:
+            dist = dist/len(ref.split())
+        if is_sum:
+            total_dist += dist
+        else:
+            dists.append((candidate,ref), dist)
+    
+    if is_sum:
+        return total_dist/len(candidate_corpus)
+    else:
+        return dists
+
+def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
+    """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
+    translation corpus.
+
+    Arguments:
+        candidate_corpus: an iterable of candidate translations. Each translation is an
+            iterable of tokens
+        reference_corpus: an iterable of iterables of reference translations. Each
+            translation is an iterable of tokens
+        normalize: if it's true, this function returns normalized Levenshtein score or nomalized edit distance
+
+    Examples:
+        >>> from torchtext.data.metrics import bleu_score
+        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
+        >>> references_corpus = ['I', 'ate', 'it']
+        >>> edit_distance(candidate, reference, normalize=False)
+            8
+        >>> edit_distance(candidate, reference, normalize=True)
+            2.666
+    """
+
+    assert len(candidate_corpus) == len(reference_corpus),\
+        'The length of candidate and reference corpus should be the same'
+
+    total_dist = 0.0
+
+    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
+        # Form them as sentences
+        candidate = ' '.join(candidate)
+        ref = ' '.join(ref)
+        dist = lev.distance(candidate.lower(), ref.lower())
+        if normalize:
+            dist = dist/len(ref.split())
+        if is_sum:
+            total_dist += dist
+        else:
+            dists.append((candidate,ref), dist)
+
+    if is_sum:
+        return total_dist/len(candidate_corpus)
+    else:
+        return dists
+    
+def bleu_score_by_sentence(candidate_corpus, reference_corpus, n_gram):
+
+    assert len(candidate_corpus) == len(reference_corpus),\
+        'The length of candidate and reference corpus should be the same'
+
+    bleu_scores = []
+    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
+        # Form them as sentences
+        bleu_scores.append(bleu_score(np.array(candidate), np.array(ref), max_n=n_gram))
+        
+    return bleu_scores 
+
 def calcMetrics(data, spliter, edit_dist, tick, choice):
     data = spliter(data, tick=tick, choice=choice)
     NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N = [],[],[],[],[],[],[]
-    
+
     for key, value in sorted(data.items(), key=lambda x: x[0]):
         KEYS.append(str(key*tick))
         NUM_DATA.append(len(value))
@@ -93,7 +190,7 @@ def calcMetrics(data, spliter, edit_dist, tick, choice):
             BLEU.append(0)
         EDIT.append(edit_dist(arr[:,2], arr[:,1], normalize=False))
         EDIT_N.append(edit_dist(arr[:,2], arr[:,1], normalize=True))
-    
+
     return NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N
 
 def plotResults(NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N):

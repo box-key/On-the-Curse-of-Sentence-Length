@@ -6,10 +6,12 @@
 
 
 import Levenshtein as lev
+from utils.edit_distance as ed
+from numpy as np
 
-def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False):
+def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
     """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
-    translation corpus.
+    translation corpus at token-level.
 
     Arguments:
         candidate_corpus: an iterable of candidate translations. Each translation is an
@@ -20,30 +22,35 @@ def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False):
 
     Examples:
         >>> from torchtext.data.metrics import bleu_score
-        >>> candidate_corpus = [['I', 'ate', 'the', 'apple'], ['I', 'did']]
-        >>> references_corpus = [['I', 'ate', 'it'], ['I', 'did']]
+        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
+        >>> references_corpus = ['I', 'ate', 'it']
         >>> edit_distance(candidate, reference, normalize=False)
-            4.5
+            2
         >>> edit_distance(candidate, reference, normalize=True)
-            1.5
+            0.66
     """
 
     assert len(candidate_corpus) == len(reference_corpus),\
         'The length of candidate and reference corpus should be the same'
 
     total_dist = 0.0
-
+    dists = []
     for (candidate, ref) in zip(candidate_corpus, reference_corpus):
         # Form them as sentences
-        dist = lev.eval(candidate, ref)
+        dist = ed.edit_distance(np.array(candidate), np.array(ref))
         if normalize:
             dist = dist/len(ref.split())
-        total_dist += dist
+        if is_sum:
+            total_dist += dist
+        else:
+            dists.append((candidate,ref), dist)
+    
+    if is_sum:
+        return total_dist/len(candidate_corpus)
+    else:
+        return dists
 
-    return total_dist/len(candidate_corpus)
-
-
-def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False):
+def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
     """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
     translation corpus.
 
@@ -76,6 +83,12 @@ def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False):
         dist = lev.distance(candidate.lower(), ref.lower())
         if normalize:
             dist = dist/len(ref.split())
-        total_dist += dist
+        if is_sum:
+            total_dist += dist
+        else:
+            dists.append((candidate,ref), dist)
 
-    return total_dist/len(candidate_corpus)
+    if is_sum:
+        return total_dist/len(candidate_corpus)
+    else:
+        return dists
