@@ -1,15 +1,9 @@
-# @Author: Kei Nemoto
-# @Date:   2020-03-15T15:10:21-04:00
-# @Last modified by:   Kei Nemoto
-# @Last modified time: 2020-03-15T15:22:34-04:00
-
-
-
+from models.utils.edit_distance import edit_distance as ed
 import Levenshtein as lev
-import utils.edit_distance as ed
-from numpy as np
+from torchtext.data.metrics import bleu_score
+import numpy as np
 
-def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
+def edit_distance_by_word(candidate_corpus, reference_corpus, is_sum=True):
     """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
     translation corpus at token-level.
 
@@ -27,26 +21,26 @@ def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False, i
         >>> edit_distance(candidate, reference, normalize=False)
             2
         >>> edit_distance(candidate, reference, normalize=True)
-            0.66
+            0.666
     """
 
     assert len(candidate_corpus) == len(reference_corpus),\
         'The length of candidate and reference corpus should be the same'
 
-    total_dist = 0.0
+    total_dist = 0
+    normalized_total_dist = 0.0
     dists = []
     for (candidate, ref) in zip(candidate_corpus, reference_corpus):
         # Form them as sentences
-        dist = ed.edit_distance(np.array(candidate), np.array(ref))
-        if normalize:
-            dist = dist/len(ref.split())
+        dist = ed.edit_distance_by_token(np.array(candidate), np.array(ref))
         if is_sum:
             total_dist += dist
+            normalized_total_dist += dist/len(ref)
         else:
-            dists.append((candidate,ref), dist)
-    
+            dists.append((dist, dist/len(ref)))
+
     if is_sum:
-        return total_dist/len(candidate_corpus)
+        return total_dist/len(candidate_corpus), normalized_total_dist/len(candidate_corpus)
     else:
         return dists
 
@@ -63,12 +57,12 @@ def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False, i
 
     Examples:
         >>> from torchtext.data.metrics import bleu_score
-        >>> candidate_corpus = [['I', 'ate', 'the', 'apple'], ['I', 'did']]
-        >>> references_corpus = [['I', 'ate', 'it'], ['I', 'did']]
+        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
+        >>> references_corpus = ['I', 'ate', 'it']
         >>> edit_distance(candidate, reference, normalize=False)
-            4.5
+            8
         >>> edit_distance(candidate, reference, normalize=True)
-            1.5
+            2.666
     """
 
     assert len(candidate_corpus) == len(reference_corpus),\
@@ -86,9 +80,21 @@ def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False, i
         if is_sum:
             total_dist += dist
         else:
-            dists.append((candidate,ref), dist)
+            dists.append((candidate,ref, dist))
 
     if is_sum:
         return total_dist/len(candidate_corpus)
     else:
         return dists
+
+def bleu_score_by_sentence(candidate_corpus, reference_corpus, n_gram=4):
+
+    assert len(candidate_corpus) == len(reference_corpus),\
+        'The length of candidate and reference corpus should be the same'
+
+    bleu_scores = []
+    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
+        # Form them as sentences
+        bleu_scores.append(bleu_score([np.array(candidate)], [np.array(ref)], max_n=n_gram))
+
+    return bleu_scores

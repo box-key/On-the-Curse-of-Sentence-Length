@@ -1,9 +1,11 @@
 import time
 import numpy as np
-from torchtext.data.metrics import bleu_score
 import matplotlib.pyplot as plt
-import Levenshtein as lev
-from utils.edit_distance as ed
+from torchtext.data.metrics import bleu_score
+import pandas as pd
+import seaborn as sns
+from models.utils import metrics as m
+from scipy.stats import spearmanr
 
 def calc_time(start_time):
     total = time.time() - start_time
@@ -27,153 +29,9 @@ def loadFairseqOutput(out_path):
             matrix.append([src, ref, hyp])
     return np.array(matrix)
 
-def splitDatabySentenceLength(triples, tick, choice):
-
-    assert (choice=='src' or choice=='ref'), 'choice should be src or ref'
-
-    data = {}
-    for triple in triples:
-        # store ref length or target length, depending on choice
-        # triple[0] = src, triple[1] = ref, triple[2] = hypothesis
-        sentence_len = len(triple[0]) if choice == 'src' else len(triple[1])
-        sentence_range = int(sentence_len/tick)
-        # check if sentence_range is OOD (Out of Dictionary)
-        # if the number already exists in data, append the pair to list
-        if sentence_range in data:
-            data[sentence_range].append(triple)
-        # otherwise, add new element and list associated with it
-        else:
-            data.update({sentence_range:[triple]})
-    return data
-
-def splitDatabyNumberOfUnknowns(triples, tick, choice):
-
-    assert (choice=='src' or choice=='ref'), 'choice should be src or ref'
-
-    data = {}
-    # go through all the src-trg pairs
-    for triple in triples:
-        # Get senetnce of src-trg
-        # use count bc it's optimized for list data type
-        if choice == 'src':
-            # count # of unknown words in a sentence
-            # unk is stored as <unk> in src
-            num_unk = triple[0].count('<unk>')
-        else:
-            # unk is stored as <unk> in src
-            num_unk = triple[1].count('<<unk>>')
-        # squash the number into range
-        num_unk_range = int(num_unk/tick)
-        # check if num_unk is OOD (Out of Dictionary)
-        # if the number already exists in data, append the pair to list
-        if num_unk_range in data:
-            data[num_unk_range].append(triple)
-        # otherwise, add new element and list associated with it
-        else:
-            data.update({num_unk_range:[triple]})
-
-    return data
-
-def edit_distance_by_word(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
-    """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
-    translation corpus at token-level.
-
-    Arguments:
-        candidate_corpus: an iterable of candidate translations. Each translation is an
-            iterable of tokens
-        reference_corpus: an iterable of iterables of reference translations. Each
-            translation is an iterable of tokens
-        normalize: if it's true, this function returns normalized Levenshtein score or nomalized edit distance
-
-    Examples:
-        >>> from torchtext.data.metrics import bleu_score
-        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
-        >>> references_corpus = ['I', 'ate', 'it']
-        >>> edit_distance(candidate, reference, normalize=False)
-            2
-        >>> edit_distance(candidate, reference, normalize=True)
-            0.666
-    """
-
-    assert len(candidate_corpus) == len(reference_corpus),\
-        'The length of candidate and reference corpus should be the same'
-
-    total_dist = 0.0
-    dists = []
-    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
-        # Form them as sentences
-        dist = ed.edit_distance(np.array(candidate), np.array(ref))
-        if normalize:
-            dist = dist/len(ref.split())
-        if is_sum:
-            total_dist += dist
-        else:
-            dists.append((candidate,ref), dist)
-    
-    if is_sum:
-        return total_dist/len(candidate_corpus)
-    else:
-        return dists
-
-def edit_distance_by_char(candidate_corpus, reference_corpus, normalize=False, is_sum=True):
-    """Computes the Edit distance (Levenshtein distance) between a candidate translation corpus and a reference
-    translation corpus.
-
-    Arguments:
-        candidate_corpus: an iterable of candidate translations. Each translation is an
-            iterable of tokens
-        reference_corpus: an iterable of iterables of reference translations. Each
-            translation is an iterable of tokens
-        normalize: if it's true, this function returns normalized Levenshtein score or nomalized edit distance
-
-    Examples:
-        >>> from torchtext.data.metrics import bleu_score
-        >>> candidate_corpus = ['I', 'ate', 'the', 'apple']
-        >>> references_corpus = ['I', 'ate', 'it']
-        >>> edit_distance(candidate, reference, normalize=False)
-            8
-        >>> edit_distance(candidate, reference, normalize=True)
-            2.666
-    """
-
-    assert len(candidate_corpus) == len(reference_corpus),\
-        'The length of candidate and reference corpus should be the same'
-
-    total_dist = 0.0
-
-    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
-        # Form them as sentences
-        candidate = ' '.join(candidate)
-        ref = ' '.join(ref)
-        dist = lev.distance(candidate.lower(), ref.lower())
-        if normalize:
-            dist = dist/len(ref.split())
-        if is_sum:
-            total_dist += dist
-        else:
-            dists.append((candidate,ref), dist)
-
-    if is_sum:
-        return total_dist/len(candidate_corpus)
-    else:
-        return dists
-    
-def bleu_score_by_sentence(candidate_corpus, reference_corpus, n_gram):
-
-    assert len(candidate_corpus) == len(reference_corpus),\
-        'The length of candidate and reference corpus should be the same'
-
-    bleu_scores = []
-    for (candidate, ref) in zip(candidate_corpus, reference_corpus):
-        # Form them as sentences
-        bleu_scores.append(bleu_score(np.array(candidate), np.array(ref), max_n=n_gram))
-        
-    return bleu_scores 
-
-def calcMetrics(data, spliter, edit_dist, tick, choice):
+def calcAverage(data, spliter, edit_dist, tick, choice):
     data = spliter(data, tick=tick, choice=choice)
     NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N = [],[],[],[],[],[],[]
-
     for key, value in sorted(data.items(), key=lambda x: x[0]):
         KEYS.append(str(key*tick))
         NUM_DATA.append(len(value))
@@ -188,10 +46,82 @@ def calcMetrics(data, spliter, edit_dist, tick, choice):
             BLEU_bp.append(0)
             BLEU_pre.append(0)
             BLEU.append(0)
-        EDIT.append(edit_dist(arr[:,2], arr[:,1], normalize=False))
-        EDIT_N.append(edit_dist(arr[:,2], arr[:,1], normalize=True))
-
+        start_time = time.time()
+        edit, edit_n = edit_dist(arr[:,2], arr[:,1])
+        EDIT.append(edit)
+        EDIT_N.append(edit_n)
     return NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N
+
+def plot_points(factor, metric, title, xbins=10):
+    factor = [round(x*xbins,2) for x in factor]
+    df=pd.DataFrame(list(zip(factor, metric)), columns=['factor', 'metric'])
+    plt.figure(figsize=(10,6))
+    sns.stripplot(data=df, x='factor', y='metric', color='green',jitter=0.2)
+    plt.title(title)
+    plt.locator_params(axis='x', nbins=xbins)
+    plt.show()
+
+# def plot_metrics(metric, factors, title, xbins=10):
+#     fig, ax = plt.subplots(2,3,sharex=True,sharey=True, tight_layout=True, figsize=(20,15))
+#     for row in range(2):
+#         for col in range(3):
+#             factor = factors[row*col+col]
+#             factor = [round(x*xbins,2) for x in factor]
+#             df=pd.DataFrame(list(zip(factor, metric)), columns=['factor', 'metric'])
+#             sns.stripplot(data=df, x='factor', y='metric', color='green',jitter=0.2, ax=ax[row][col])
+#             ax[row][col].locator_params(axis='x', nbins=xbins)
+#     plt.setp(ax[:,0], ylabel='Source', fontsize=12)
+#     plt.setp(ax[:,0], ylabel='Reference', fontsize=12)
+#     plt.setp(ax[-1,:], xlabel='Length', fontsize=12)
+#     plt.setp(ax[-1,:], xlabel='Unk Rate', fontsize=12)
+#     plt.setp(ax[-1,:], xlabel='# of Unk', fontsize=12)
+
+
+def get_factors(data):
+    num_unks_src = [triple[0].count('<unk>') for triple in data]
+    num_unks_ref = [triple[1].count('<<unk>>') for triple in data]
+    frac_unks_src = [round(triple[0].count('<unk>')/len(triple[0]),2) for triple in data]
+    frac_unks_ref = [round(triple[1].count('<<unk>>')/len(triple[1]),2) for triple in data]
+    src_len = [len(triple[0]) for triple in data]
+    ref_len = [len(triple[1]) for triple in data]
+    return (('Source Length', src_len), \
+            ('# Unknowns in Source',num_unks_src), \
+            ('% Unknowns in Source', frac_unks_src), \
+            ('Refenrence Length', ref_len), \
+            ('# Unknowns in Reference', num_unks_ref), \
+            ('% Unknowns in Reference', frac_unks_ref))
+
+def get_metrics(data, n_gram):
+    assert isinstance(data, np.ndarray), \
+        'data should be numpy array with 3 dimension (source, reference, hypothesis)'
+
+    start_time = time.time()
+    edit_dists = m.edit_distance_by_word(data[:,2], data[:,1], is_sum=False)
+    min, sec = calc_time(start_time)
+    print(f'Edit Distance takes: {min} min {sec} sec')
+
+    start_lime = time.time()
+    bleus = m.bleu_score_by_sentence(data[:,2], data[:,1], n_gram=n_gram)
+    min, sec = calc_time(start_time)
+    print(f'BLEU score takes: {min} min {sec} sec')
+
+    edit_dist = [dist[0] for dist in edit_dists]
+    edit_dist_norm = [dist[1] for dist in edit_dists]
+    bleu_bp = [b[0] for b in bleus]
+    bleu_pre = [b[1] for b in bleus]
+    bleu_score = [b[2] for b in bleus]
+    return (('Edit Distance', edit_dist), \
+            ('Normalized Edit Distance', edit_dist_norm), \
+            ('Bleu Precision', bleu_bp), \
+            ('Bleu Brevity Penalty', bleu_pre), \
+            ('Bleu Score', bleu_score))
+
+def plot_metric(metric, factors, xbins=10):
+    for factor in factors:
+        r,p = spearmanr(factor[1], metric[1])
+        plot_points(factor=factor[1], metric=metric[1], \
+                    title=f'{metric[0]} by {factor[0]} - Spearman coefficient: {round(r,4)}', \
+                    xbins=xbins)
 
 def plotResults(NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N):
     plt.plot(KEYS, NUM_DATA)
