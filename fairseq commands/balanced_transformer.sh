@@ -1,6 +1,6 @@
 # set variables
 set MODEL_DIR=C:/Users/under/Jupyter-Projects/My-Research/On-the-Curse-of-Sentence-Length
-set DATA_DIR=C:/Users/under/Datasets/Neural-Machine-Translation/Europarl_fr-en_reduced
+set DATA_DIR=C:/Users/under/Datasets/Neural-Machine-Translation/Europarl_fr-en_balanced
 cd %DATA_DIR%
 
 # preprocess external data for pretrained models
