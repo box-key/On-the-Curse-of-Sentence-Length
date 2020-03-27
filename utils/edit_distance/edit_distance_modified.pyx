@@ -7,11 +7,11 @@ cpdef vector[string] _copy_list(list data):
     _data.push_back(_str.encode("utf-8"))
   return _data
 
-cpdef void assign_zeros(vector[int]& vec, int length):
+cpdef void _assign_zeros(vector[int]& vec, int length):
   for i in range(length):
     vec[i] = 0
 
-cpdef vector[int] make_zeros(int num):
+cpdef vector[int] _make_zeros(int num):
   cdef vector[int] zeros
   for i in range(num):
     zeros.push_back(0)
@@ -34,7 +34,7 @@ cpdef int edit_distance_by_token(list sen1, list sen2):
   cdef vector[int] distances = range(len_s1)
   distances.reserve(len_s1)
 
-  cdef vector[int] dist_temp = make_zeros(len_s1)
+  cdef vector[int] dist_temp = _make_zeros(len_s1)
   dist_temp.reserve(len_s1)
 
   cdef int comp
@@ -47,6 +47,6 @@ cpdef int edit_distance_by_token(list sen1, list sen2):
       comp = w1.compare(w2)
       dist_temp[i1+1] = distances[i1] if comp==0 else 1 + min((distances[i1], distances[i1+1], dist_temp[i1]))
     distances = dist_temp
-    assign_zeros(dist_temp, len_s1)
+    _assign_zeros(dist_temp, len_s1)
 
   return distances.back()
