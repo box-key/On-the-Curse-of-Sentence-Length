@@ -11,8 +11,13 @@ def calc_time(start_time):
     total = time.time() - start_time
     return int(total/60), int(total%60)
 
-def calcAverage(data, spliter, edit_dist, tick, choice):
-    data = spliter(data, tick=tick, choice=choice)
+def jitter(arr, rate=0.1):
+    stdev = rate*(max(arr)-min(arr))
+    return arr + np.random.randn(len(arr)) * stdev
+
+def calcAverage(data, edit_dist, tick, choice=None, spliter=None):
+    if spliter is not None:
+        data = spliter(data, tick=tick, choice=choice)
     NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N = [],[],[],[],[],[],[]
     for key, value in sorted(data.items(), key=lambda x: x[0]):
         KEYS.append(str(key*tick))
@@ -34,9 +39,11 @@ def calcAverage(data, spliter, edit_dist, tick, choice):
         EDIT_N.append(edit_n)
     return NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N
 
-def plot_points(factor, metric, title, xbins=10):
+def plot_points(factor, metric, title, remove_zero, xbins=10):
     factor = [round(x*xbins,2) for x in factor]
     df=pd.DataFrame(list(zip(factor, metric)), columns=['factor', 'metric'])
+    if remove_zero:
+        df = df[df['metric']!=0]
     plt.figure(figsize=(10,6))
     sns.stripplot(data=df, x='factor', y='metric', color='green',jitter=0.2)
     plt.title(title)
@@ -90,12 +97,26 @@ def plot_factors_hist(factors, nbin):
         plt.xlim(0,max_val)
         plt.show()
 
-def plot_metric(metric, factors, xbins=10):
+def plot_metric(metric, factors, xbins=10, remove_zero=False):
     for factor in factors:
         r,p = spearmanr(factor[1], metric[1])
-        plot_points(factor=factor[1], metric=metric[1], \
-                    title=f'{metric[0]} by {factor[0]} - Spearman coefficient: {round(r,4)}', \
+        plot_points(factor=factor[1], metric=metric[1],
+                    title=f'{metric[0]} by {factor[0]} - Spearman coefficient: {round(r,4)}',
+                    remove_zero=remove_zero,
                     xbins=xbins)
+
+def plot_scatter_line(metrics_scatter, factor_scatter, metrics_line, factor_line, xlim, remove_zero=False):
+    for metric_scatter, metric_line in zip(metrics_scatter, metrics_line):
+        if remove_zero:
+            pair = np.array(list(filter(lambda x: x[1]>0, zip(factor_scatter[1], metric_scatter[1]))))
+        else:
+            pair = np.array(list(zip(factor_scatter[1], metric_scatter[1])))
+        plt.figure(figsize=(10,6))
+        plt.title(f'{metric_scatter[0]} with {factor_scatter[0]}')
+        plt.plot(factor_line, metric_line, marker='D', color='orange', markersize=8)
+        plt.scatter(pair[:,0], pair[:,1])
+        plt.xlim(0,xlim)
+        plt.show()
 
 def plotResults(NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N):
     plt.plot(KEYS, NUM_DATA)

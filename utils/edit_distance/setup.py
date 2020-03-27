@@ -1,8 +1,13 @@
 from distutils.core import setup
 from Cython.Build import cythonize
-import numpy as np
+from setuptools import Extension
+
+app = Extension(
+        name='edit_distance',
+        language='c++',
+        sources=['edit_distance_modified.pyx']
+)
 
 setup(
-    ext_modules = cythonize("edit_distance.pyx"),
-    include_dirs = [np.get_include()]
+    ext_modules = cythonize(app),
 )

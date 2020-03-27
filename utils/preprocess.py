@@ -1,3 +1,10 @@
+# @Author: Kei Nemoto
+# @Date:   2020-03-18T19:42:05-04:00
+# @Last modified by:   Kei Nemoto
+# @Last modified time: 2020-03-25T17:26:18-04:00
+
+
+
 from torchtext.data import Example
 import random
 from torchtext import data

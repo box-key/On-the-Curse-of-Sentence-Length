@@ -1,3 +1,10 @@
+# @Author: Kei Nemoto
+# @Date:   2020-03-21T14:47:28-04:00
+# @Last modified by:   Kei Nemoto
+# @Last modified time: 2020-03-25T17:26:41-04:00
+
+
+
 import math
 
 def splitDatabySentenceLength(triples, tick, choice):
@@ -61,3 +68,24 @@ def splitDatabyFractionOfUnknowns(triples, choice, tick=1):
         data[idx].append(triple)
 
     return data
+
+def merge_bin(bins, target_bin):
+    delete = []
+    for key in bins.keys():
+        if key > target_bin:
+            # merge bin to target
+            bins[target_bin] += bins[key]
+            # store the keys of bins to be removed
+            delete.append(key)
+    # Delete mereged bins
+    for key in delete: del bins[key]
+    return bins
+
+def print_bins(bins, tick):
+    for key, val in sorted(bins.items(), key=lambda x: x[0]):
+        print(f'Bin {key*tick}-{key*tick+tick} has {len(val)} sentences')
+        
+def print_merged_bins(bins, tick):
+    for key, val in sorted(bins.items(), key=lambda x: x[0]):
+        ran = f'{key*tick}-{key*tick+tick}' if key+1<len(bins) else f'{key*tick}-'
+        print(f'Bin {ran} has {len(val)} sentences')

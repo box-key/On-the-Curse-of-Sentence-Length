@@ -1,3 +1,10 @@
+# @Author: Kei Nemoto
+# @Date:   2020-03-21T14:48:07-04:00
+# @Last modified by:   Kei Nemoto
+# @Last modified time: 2020-03-25T17:26:35-04:00
+
+
+
 from utils.edit_distance import edit_distance as ed
 import Levenshtein as lev
 from torchtext.data.metrics import bleu_score
@@ -32,7 +39,7 @@ def edit_distance_by_word(candidate_corpus, reference_corpus, is_sum=True):
     dists = []
     for (candidate, ref) in zip(candidate_corpus, reference_corpus):
         # Form them as sentences
-        dist = ed.edit_distance_by_token(np.array(candidate), np.array(ref))
+        dist = ed.edit_distance_by_token(candidate, ref)
         if is_sum:
             total_dist += dist
             normalized_total_dist += dist/len(ref)
