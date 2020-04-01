@@ -4,18 +4,14 @@ import matplotlib.pyplot as plt
 from torchtext.data.metrics import bleu_score
 import pandas as pd
 import seaborn as sns
-from utils.model_evaluation import metrics as m
-from scipy.stats import spearmanr
+from .metric import bleu as b
+from .metric import edit_distance as ed
 
 def calc_time(start_time):
     total = time.time() - start_time
     return int(total/60), int(total%60)
 
-def jitter(arr, rate=0.1):
-    stdev = rate*(max(arr)-min(arr))
-    return arr + np.random.randn(len(arr)) * stdev
-
-def calcAverage(data, edit_dist, tick, choice=None, spliter=None):
+def calcAverage(data, tick, ngram, choice=None, spliter=None):
     if spliter is not None:
         data = spliter(data, tick=tick, choice=choice)
     NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N = [],[],[],[],[],[],[]
@@ -24,31 +20,20 @@ def calcAverage(data, edit_dist, tick, choice=None, spliter=None):
         NUM_DATA.append(len(value))
 
         arr = np.array(value)
-        bleu = bleu_score(arr[:,2], arr[:,1])
-        if isinstance(bleu, tuple):
-            BLEU_bp.append(bleu[0])
-            BLEU_pre.append(bleu[1])
-            BLEU.append(bleu[2])
+        bleu_score = b.bleu_corpus(arr[:,1].tolist(), arr[:,2].tolist(), ngram)
+        if isinstance(bleu_score, list):
+            BLEU_pre.append(bleu_score[0])
+            BLEU_bp.append(bleu_score[1])
+            BLEU.append(bleu_score[2])
         else:
             BLEU_bp.append(0)
             BLEU_pre.append(0)
             BLEU.append(0)
         start_time = time.time()
-        edit, edit_n = edit_dist(arr[:,2], arr[:,1])
-        EDIT.append(edit)
-        EDIT_N.append(edit_n)
+        edist = ed.edit_distance_corpus(arr[:,1].tolist(), arr[:,2].tolist())
+        EDIT.append(edist[0])
+        EDIT_N.append(edist[1])
     return NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N
-
-def plot_points(factor, metric, title, remove_zero, xbins=10):
-    factor = [round(x*xbins,2) for x in factor]
-    df=pd.DataFrame(list(zip(factor, metric)), columns=['factor', 'metric'])
-    if remove_zero:
-        df = df[df['metric']!=0]
-    plt.figure(figsize=(10,6))
-    sns.stripplot(data=df, x='factor', y='metric', color='green',jitter=0.2)
-    plt.title(title)
-    plt.locator_params(axis='x', nbins=xbins)
-    plt.show()
 
 def get_factors(data):
     num_unks_src = [triple[0].count('<unk>') for triple in data]
@@ -69,24 +54,24 @@ def get_metrics(data, n_gram):
         'data should be numpy array with 3 dimension (source, reference, hypothesis)'
 
     start_time = time.time()
-    edit_dists = m.edit_distance_by_word(data[:,2], data[:,1], is_sum=False)
+    edit_dists = ed.edit_distance_points(data[:,1].tolist(), data[:,2].tolist())
     min, sec = calc_time(start_time)
     print(f'Edit Distance takes: {min} min {sec} sec')
 
     start_lime = time.time()
-    bleus = m.bleu_score_by_sentence(data[:,2], data[:,1], n_gram=n_gram)
+    bleus = b.bleu_points(data[:,1].tolist(), data[:,2].tolist(), n_gram)
     min, sec = calc_time(start_time)
     print(f'BLEU score takes: {min} min {sec} sec')
 
     edit_dist = [dist[0] for dist in edit_dists]
     edit_dist_norm = [dist[1] for dist in edit_dists]
-    bleu_bp = [b[0] for b in bleus]
-    bleu_pre = [b[1] for b in bleus]
-    bleu_score = [b[2] for b in bleus]
+    bleu_pre = [bleu[0] for bleu in bleus]
+    bleu_bp = [bleu[1] for bleu in bleus]
+    bleu_score = [bleu[2] for bleu in bleus]
     return (('Edit Distance', edit_dist), \
             ('Normalized Edit Distance', edit_dist_norm), \
-            ('Bleu Precision', bleu_bp), \
-            ('Bleu Brevity Penalty', bleu_pre), \
+            ('Bleu Precision', bleu_pre), \
+            ('Bleu Brevity Penalty', bleu_bp), \
             ('Bleu Score', bleu_score))
 
 def plot_factors_hist(factors, nbin):
@@ -99,11 +84,13 @@ def plot_factors_hist(factors, nbin):
 
 def plot_metric(metric, factors, xbins=10, remove_zero=False):
     for factor in factors:
-        r,p = spearmanr(factor[1], metric[1])
-        plot_points(factor=factor[1], metric=metric[1],
-                    title=f'{metric[0]} by {factor[0]} - Spearman coefficient: {round(r,4)}',
-                    remove_zero=remove_zero,
-                    xbins=xbins)
+        if remove_zero:
+            pair = np.array(list(filter(lambda x: x[1]>0, zip(factor[1], metric[1]))))
+        else:
+            pair = np.array(list(zip(factor[1], metric[1])))
+        plt.figure(figsize=(10,6))
+        plt.title(f'{metric[0]} with {factor[0]}')
+        plt.scatter(pair[:,0], pair[:,1], color='green')
 
 def plot_scatter_line(metrics_scatter, factor_scatter, metrics_line, factor_line, xlim, remove_zero=False):
     for metric_scatter, metric_line in zip(metrics_scatter, metrics_line):
@@ -116,6 +103,8 @@ def plot_scatter_line(metrics_scatter, factor_scatter, metrics_line, factor_line
         plt.plot(factor_line, metric_line, marker='D', color='orange', markersize=8)
         plt.scatter(pair[:,0], pair[:,1])
         plt.xlim(0,xlim)
+        if metric_scatter[0]=='Normalized Edit Distance':
+            plt.ylim(0,3.1)
         plt.show()
 
 def plotResults(NUM_DATA, KEYS, BLEU, BLEU_pre, BLEU_bp, EDIT, EDIT_N):
