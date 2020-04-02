@@ -15,6 +15,10 @@ cpdef vector[string] _copy_list(list data):
     _data.push_back(s.encode("utf-8"))
   return _data
 
+cpdef map[string,int] _test(list sentence, int max_order):
+  cdef vector[string] _sentence = _copy_list(sentence)
+  return _count_ngram(_sentence,max_order)
+
 cpdef map[string,int] _get_overlap(map[string,int] m1, map[string,int] m2):
   cdef map[string,int] overlap
   cdef int c2
@@ -44,6 +48,14 @@ cpdef map[string,int] _count_ngram(vector[string] sentence, int max_order):
   return ngram_counts
 
 cpdef vector[float] bleu_sentence(list reference, list candidate, int max_order):
+  cdef vector[float] scores
+  scores.reserve(3)
+  for i in range(3):
+    scores.push_back(0)
+
+  if (len(reference)==0) or (len(candidate)==0):
+    return scores
+
   cdef vector[string] _reference = _copy_list(reference)
   cdef vector[string] _candidate = _copy_list(candidate)
 
@@ -58,10 +70,16 @@ cpdef vector[float] bleu_sentence(list reference, list candidate, int max_order)
     order = len(re.findall(DELIM, ngram_token))
     # count the number of occurence of token
     clipped_count[order-1] += count
-  clipped_count = clipped_count/(_candidate.size()-np.arange(max_order))
+
+  # avoid division by 0
+  cdef int norm
+  for order in range(max_order):
+    norm = _candidate.size()-order
+    if norm>0:
+      clipped_count[order] /= norm
 
   cdef float precision, bp
-  if min(clipped_count) > 0:
+  if min(clipped_count)>0:
     log = np.log(clipped_count)/max_order
     precision = np.exp(log.sum())
   else:
@@ -70,12 +88,9 @@ cpdef vector[float] bleu_sentence(list reference, list candidate, int max_order)
   cdef float ratio = (<float>_reference.size()/_candidate.size())
   bp = np.exp(min(1.-ratio,0))
 
-  cdef vector[float] scores
-  scores.reserve(3)
-
-  scores.push_back(precision)
-  scores.push_back(bp)
-  scores.push_back(precision*bp)
+  scores[0] += precision
+  scores[1] += bp
+  scores[2] += precision*bp
 
   return scores
 
